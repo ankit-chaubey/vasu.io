@@ -3,8 +3,8 @@ use colored::*;
 use std::path::{Path, PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const AUTHOR:  &str = "Ankit Chaubey";
-const GITHUB:  &str = "github.com/ankit-chaubey";
+const AUTHOR: &str = "Ankit Chaubey";
+const GITHUB: &str = "github.com/ankit-chaubey";
 
 // ─────────────────────────────────────────────────────────────
 //  CLI STRUCTURE
@@ -307,7 +307,7 @@ fn cmd_del(keep: Vec<String>, yes: bool) {
             std::fs::remove_file(&p).map_err(|e| e.to_string())
         };
         match result {
-            Ok(_)  => count += 1,
+            Ok(_) => count += 1,
             Err(e) => eprintln!("  {} {}: {}", "✗".red(), p.display(), e),
         }
     }
@@ -497,7 +497,7 @@ fn print_tree(dir: &Path, prefix: &str, max_depth: usize, current: usize, show_a
     for (i, entry) in entries.iter().enumerate() {
         let is_last = i + 1 == count;
         let connector = if is_last { "└── " } else { "├── " };
-        let extension  = if is_last { "    " } else { "│   " };
+        let extension = if is_last { "    " } else { "│   " };
         let name = entry.file_name().to_string_lossy().to_string();
         let path = entry.path();
 
@@ -679,7 +679,7 @@ fn cmd_zip(source: &Path, output: Option<PathBuf>) {
     if source.is_dir() {
         for entry in walkdir::WalkDir::new(source).into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
-            let rel  = path.strip_prefix(source.parent().unwrap_or(Path::new("."))).unwrap();
+            let rel = path.strip_prefix(source.parent().unwrap_or(Path::new("."))).unwrap();
             if path.is_file() {
                 zip.start_file(rel.to_string_lossy(), opts).unwrap();
                 let data = std::fs::read(path).unwrap();
@@ -758,7 +758,7 @@ fn cmd_count(directory: &Path, ext_filter: Vec<String>) {
     for entry in walkdir::WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() { continue; }
         let path = entry.path();
-        let ext  = path.extension()
+        let ext = path.extension()
             .map(|e| format!(".{}", e.to_string_lossy().to_lowercase()))
             .unwrap_or_else(|| "(no ext)".into());
 
@@ -795,15 +795,15 @@ fn cmd_count(directory: &Path, ext_filter: Vec<String>) {
 //  HASH
 // ─────────────────────────────────────────────────────────────
 fn cmd_hash(file: &Path) {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     if !file.is_file() {
         eprintln!("{} Not a file: {}", "✗".red(), file.display());
         std::process::exit(1);
     }
     let data = std::fs::read(file).expect("Cannot read file");
-    let md5_hash    = format!("{:x}", md5::compute(&data));
+    let md5_hash = format!("{:x}", md5::compute(&data));
     let sha256_hash = format!("{:x}", Sha256::digest(&data));
-    let size        = human_size(data.len() as u64);
+    let size = human_size(data.len() as u64);
 
     println!("\n  {} {}", "File:  ".bold(), file.display().to_string().cyan());
     println!("  {} {}", "Size:  ".bold(), size.yellow());
@@ -818,7 +818,7 @@ fn cmd_hash(file: &Path) {
 fn cmd_backup(source: &Path, dest: &Path) {
     use chrono::Local;
     let stamp = Local::now().format("%Y%m%d_%H%M%S");
-    let name  = source.file_name().unwrap_or(std::ffi::OsStr::new("backup"))
+    let name = source.file_name().unwrap_or(std::ffi::OsStr::new("backup"))
         .to_string_lossy();
     std::fs::create_dir_all(dest).unwrap();
     let out = dest.join(format!("{name}_{stamp}.zip"));
@@ -876,7 +876,7 @@ fn cmd_http(port: u16, directory: &Path) {
             let path_str = first_line
                 .split_whitespace().nth(1).unwrap_or("/")
                 .to_string();
-            let decoded  = percent_decode(&path_str);
+            let decoded = percent_decode(&path_str);
             let rel_path = decoded.trim_start_matches('/');
             let full_path = if rel_path.is_empty() {
                 dir.clone()

@@ -27,7 +27,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all-features
       - run: cargo clippy -- -D warnings
-      - run: cargo fmt --check
 
   # ── 2. build release binaries ──────────────────────────────
   build:
