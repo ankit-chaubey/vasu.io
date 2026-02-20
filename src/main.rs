@@ -296,9 +296,7 @@ fn cmd_del(keep: Vec<String>, yes: bool) {
     }
     println!("\n{} {}", "Will KEEP:".green().bold(), keep.join(", ").cyan());
 
-    if !yes {
-        if !confirm("\nProceed?") { return; }
-    }
+    if !yes && !confirm("\nProceed?") { return; }
 
     let mut count = 0usize;
     for item in &to_delete {
@@ -393,16 +391,13 @@ fn cmd_cb(targets: Vec<String>, no_header: bool) {
     let mut count = 0usize;
 
     for fp in &files {
-        match std::fs::read_to_string(fp) {
-            Ok(content) => {
+        if let Ok(content) = std::fs::read_to_string(fp) {
                 if no_header {
                     parts.push(content);
                 } else {
                     parts.push(format!("\n\n# ─── {} ───\n\n{}", fp.display(), content));
                 }
                 count += 1;
-            }
-            Err(_) => {} // skip binary files
         }
     }
 
@@ -859,7 +854,7 @@ fn cmd_env(filter: &str) {
 // ─────────────────────────────────────────────────────────────
 fn cmd_http(port: u16, directory: &Path) {
     use std::net::TcpListener;
-    use std::io::{Read, Write, BufRead, BufReader};
+    use std::io::{Write, BufRead, BufReader};
 
     let dir = directory.canonicalize().unwrap_or(directory.to_path_buf());
     std::env::set_current_dir(&dir).unwrap();
@@ -873,9 +868,8 @@ fn cmd_http(port: u16, directory: &Path) {
 
     let listener = TcpListener::bind(format!("0.0.0.0:{port}")).expect("Failed to bind port");
 
-    for stream in listener.incoming() {
-        if let Ok(mut stream) = stream {
-            let mut reader = BufReader::new(stream.try_clone().unwrap());
+    for mut stream in listener.incoming().flatten() {
+        let mut reader = BufReader::new(stream.try_clone().unwrap());
             let mut first_line = String::new();
             reader.read_line(&mut first_line).ok();
 
@@ -929,7 +923,6 @@ fn cmd_http(port: u16, directory: &Path) {
             };
 
             stream.write_all(response.as_bytes()).ok();
-        }
     }
 }
 
