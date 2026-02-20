@@ -1,0 +1,169 @@
+# ─────────────────────────────────────────────────────────────
+#  vasu CI/CD
+#  • Test on every push / PR
+#  • Build release binaries for Linux, macOS, Windows + Android (aarch64)
+#  • On  v* tag → publish to crates.io + create GitHub Release with binaries
+# ─────────────────────────────────────────────────────────────
+name: CI / Release
+
+on:
+  push:
+    branches: ["**"]
+    tags:     ["v*.*.*"]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── 1. test ────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-features
+      - run: cargo clippy -- -D warnings
+      - run: cargo fmt --check
+
+  # ── 2. build release binaries ──────────────────────────────
+  build:
+    name: Build · ${{ matrix.target }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Linux x86-64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: vasu-linux-x86_64
+
+          # ── Linux ARM64 (Raspberry Pi / ARM servers)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: vasu-linux-aarch64
+            cross: true
+
+          # ── Android / Termux (aarch64)
+          - os: ubuntu-latest
+            target: aarch64-linux-android
+            artifact: vasu-android-aarch64
+            cross: true
+
+          # ── macOS Apple Silicon
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: vasu-macos-arm64
+
+          # ── macOS Intel
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: vasu-macos-x86_64
+
+          # ── Windows x86-64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: vasu-windows-x86_64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross (for cross-compilation)
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build (native)
+        if: "!matrix.cross"
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/vasu ${{ matrix.artifact }}
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/vasu.exe ${{ matrix.artifact }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  # ── 3. GitHub Release + binaries ───────────────────────────
+  release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: binaries/**/*
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            ### macOS / Linux
+            ```bash
+            # Download the right binary for your platform
+            curl -Lo vasu https://github.com/ankit-chaubey/vasu.io/releases/latest/download/vasu-<platform>
+            chmod +x vasu
+            sudo mv vasu /usr/local/bin/
+            ```
+
+            ### Termux (Android)
+            ```bash
+            curl -Lo vasu https://github.com/ankit-chaubey/vasu.io/releases/latest/download/vasu-android-aarch64
+            chmod +x vasu
+            mv vasu $PREFIX/bin/
+            ```
+
+            ### cargo
+            ```bash
+            cargo install vasu
+            ```
+
+  # ── 4. Publish to crates.io ────────────────────────────────
+  publish:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        # Setup: https://crates.io/settings/tokens → add as GitHub secret CARGO_REGISTRY_TOKEN

@@ -1,0 +1,36 @@
+[package]
+name        = "vasu"
+version     = "0.0.0"
+edition     = "2021"
+authors     = ["Ankit Chaubey <ankit@example.com>"]
+description = "Ankit Chaubey's personal power toolkit — blazing fast file ops, clipboard magic & more"
+license     = "MIT"
+repository  = "https://github.com/ankit-chaubey/vasu.io"
+homepage    = "https://github.com/ankit-chaubey/vasu.io"
+keywords    = ["cli", "toolkit", "files", "productivity"]
+categories  = ["command-line-utilities"]
+readme      = "README.md"
+
+[[bin]]
+name = "vasu"
+path = "src/main.rs"
+
+[dependencies]
+clap        = { version = "4",  features = ["derive", "color"] }
+colored     = "2"
+walkdir     = "2"
+fs_extra    = "1"
+zip         = "0.6"
+chrono      = "0.4"
+md5         = "0.7"
+sha2        = "0.10"
+hex         = "0.4"
+dialoguer   = "0.11"
+indicatif   = "0.17"
+ignore      = "0.4"
+
+[profile.release]
+opt-level   = 3
+lto         = true
+codegen-units = 1
+strip       = true
